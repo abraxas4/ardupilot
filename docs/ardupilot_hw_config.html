@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArduPilot 최신 HW 구성도 (Cube Orange+ 기준)</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --border: #2d3a4f;
+      --accent: #3b82f6;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      /* 기능 카테고리 색 — 서로 비슷하지 않게 분리 */
+      --c-fc: #3b82f6;        /* Cube / FC */
+      --c-dronecan: #8b5cf6;  /* DroneCAN 센서 */
+      --c-range: #eab308;     /* Rangefinder — 노랑 (RC와 구분) */
+      --c-adsb: #0ea5e9;      /* ADS-B — 하늘색 */
+      --c-rc: #ef4444;        /* RC Receiver — 빨강 (제어 입력) */
+      --c-telem: #14b8a6;     /* Telemetry — 청록 */
+      --c-gcs: #6366f1;       /* HereLink / GCS — 인디고 */
+      --c-power: #f97316;     /* Power */
+      --c-pwm: #ec4899;       /* ESC / Motors / Servos */
+      --c-comp: #64748b;      /* Companion / Safety */
+      --c-spi: #10b981;       /* Internal SPI */
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      padding: 24px;
+      min-height: 100vh;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 {
+      font-size: 1.75rem; font-weight: 700;
+      background: linear-gradient(90deg, #60a5fa, #34d399);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .header p { color: var(--muted); font-size: 0.95rem; }
+    .intro {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px; margin-bottom: 20px;
+      font-size: 0.9rem; color: var(--muted);
+    }
+    .intro strong { color: var(--text); }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 12px 18px; justify-content: center;
+      margin-bottom: 16px; padding: 12px 16px;
+      background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+    }
+    .legend-title {
+      width: 100%; text-align: center; font-size: 0.75rem;
+      color: var(--muted); margin-bottom: 2px; letter-spacing: 0.02em;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
+    .diagram-container {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 16px; overflow-x: auto; margin-bottom: 8px;
+    }
+    svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+    .color-note {
+      font-size: 0.8rem; color: var(--muted); text-align: center; margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 1.15rem; font-weight: 700; margin: 28px 0 12px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .info-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px; margin-top: 8px;
+    }
+    .info-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 18px;
+    }
+    .info-card h3 {
+      font-size: 0.95rem; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .info-card ul { list-style: none; font-size: 0.85rem; color: var(--muted); }
+    .info-card li { margin-bottom: 6px; padding-left: 12px; position: relative; }
+    .info-card li::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
+    .info-card strong { color: #cbd5e1; }
+    .badge {
+      display: inline-block; font-size: 0.7rem; padding: 2px 8px;
+      border-radius: 999px; font-weight: 600;
+    }
+    .badge-can { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; }
+    .badge-serial { background: rgba(20, 184, 166, 0.25); color: #5eead4; }
+    .badge-pwm { background: rgba(236, 72, 153, 0.25); color: #f9a8d4; }
+    .badge-power { background: rgba(249, 115, 22, 0.25); color: #fdba74; }
+    .badge-internal { background: rgba(16, 185, 129, 0.25); color: #6ee7b7; }
+    .badge-rc { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+    .badge-range { background: rgba(234, 179, 8, 0.25); color: #fde047; }
+    .badge-comp { background: rgba(100, 116, 139, 0.3); color: #cbd5e1; }
+
+    /* 용어 사전 */
+    .glossary {
+      display: grid; gap: 10px; margin-top: 8px;
+    }
+    .term {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px;
+    }
+    .term dt {
+      font-weight: 700; font-size: 0.92rem; color: #f1f5f9;
+      margin-bottom: 4px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    }
+    .term dt .en {
+      font-weight: 500; font-size: 0.78rem; color: var(--muted);
+    }
+    .term dd {
+      font-size: 0.85rem; color: var(--muted); margin: 0;
+    }
+    .term-group {
+      font-size: 0.8rem; font-weight: 700; color: #60a5fa;
+      margin: 18px 0 8px; text-transform: none; letter-spacing: 0.01em;
+    }
+    .term-group:first-child { margin-top: 4px; }
+    .footer {
+      text-align: center; margin-top: 32px; font-size: 0.8rem; color: var(--muted);
+      padding-bottom: 16px;
+    }
+    a { color: #60a5fa; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>ArduPilot 최신 HW 구성도</h1>
+    <p>Cube Orange+ 기준 · 2025–2026 일반적인 상용/연구용 구성 · Sensor Sampling 중심</p>
+  </div>
+
+  <div class="intro">
+    <strong>이 문서는 무엇을 보여주나요?</strong>
+    드론(또는 무인기)의 “뇌” 역할을 하는 <strong>비행 제어기(Flight Controller)</strong>인
+    <strong>Cube Orange+</strong>를 중심으로, 어떤 센서·통신·전원·모터 장비가 붙는지 한눈에 보는 그림입니다.
+    아래 구성도 색은 <em>기능 역할</em>별로 나눴고, 연결 선 스타일/라벨로 <em>통신 방식(프로토콜)</em>을 구분합니다.
+    처음 보는 용어는 페이지 하단 <strong>용어 사전</strong>에서 설명합니다.
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">구성도 색 = 기능 역할 (비슷한 색을 피함)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Cube Orange+ (비행 제어기)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> DroneCAN 항법·시야 센서</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#eab308"></div> Rangefinder (거리 센서)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div> ADS-B (항공 교통 수신)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> RC Receiver (조종 수신기)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div> Telemetry (원격 통신)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div> HereLink / GCS</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div> Power (전원)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div> ESC / Motors / Servos</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Companion / Safety</div>
+  </div>
+
+  <div class="diagram-container">
+    <svg viewBox="0 0 1100 740" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, system-ui, sans-serif">
+      <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+        </pattern>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <linearGradient id="cubeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#3b82f6"/>
+          <stop offset="100%" stop-color="#1d4ed8"/>
+        </linearGradient>
+      </defs>
+
+      <rect width="1100" height="740" fill="url(#grid)"/>
+
+      <!-- CENTER: CUBE ORANGE+ -->
+      <g transform="translate(430, 290)">
+        <rect x="0" y="0" width="240" height="160" rx="16" fill="url(#cubeGrad)" filter="url(#glow)" stroke="#60a5fa" stroke-width="2"/>
+        <text x="120" y="38" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">Cube Orange+</text>
+        <text x="120" y="58" text-anchor="middle" fill="#bfdbfe" font-size="12">비행 제어기 · STM32H757</text>
+        <text x="120" y="82" text-anchor="middle" fill="#e0f2fe" font-size="11">Triple Redundant IMU</text>
+        <text x="120" y="100" text-anchor="middle" fill="#e0f2fe" font-size="11">ICM42688 + ICM20948</text>
+        <text x="120" y="118" text-anchor="middle" fill="#e0f2fe" font-size="11">2× Baro · Mag · Temp Control</text>
+        <text x="120" y="142" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="600">내부 SPI · 1~8 kHz 고속 샘플</text>
+      </g>
+
+      <!-- LEFT: Sensors — DroneCAN (보라) -->
+      <g transform="translate(40, 60)">
+        <rect x="0" y="0" width="170" height="90" rx="12" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="85" y="28" text-anchor="middle" fill="#c4b5fd" font-size="14" font-weight="700">Here4 GNSS</text>
+        <text x="85" y="48" text-anchor="middle" fill="#a5b4fc" font-size="11">위성 항법 · RTK F9P</text>
+        <text x="85" y="66" text-anchor="middle" fill="#a5b4fc" font-size="11">IMU + RM3100 Mag</text>
+        <text x="85" y="82" text-anchor="middle" fill="#ddd6fe" font-size="10">5~20 Hz · DroneCAN</text>
+      </g>
+
+      <g transform="translate(40, 180)">
+        <rect x="0" y="0" width="170" height="90" rx="12" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="85" y="26" text-anchor="middle" fill="#c4b5fd" font-size="13" font-weight="700">Optical Flow</text>
+        <text x="85" y="46" text-anchor="middle" fill="#a5b4fc" font-size="11">HereFlow / ARK Flow</text>
+        <text x="85" y="64" text-anchor="middle" fill="#a5b4fc" font-size="11">+ TOF / Lidar</text>
+        <text x="85" y="80" text-anchor="middle" fill="#ddd6fe" font-size="10">10~50 Hz · DroneCAN</text>
+      </g>
+
+      <g transform="translate(40, 300)">
+        <rect x="0" y="0" width="170" height="70" rx="12" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="85" y="28" text-anchor="middle" fill="#c4b5fd" font-size="13" font-weight="700">External Mag</text>
+        <text x="85" y="48" text-anchor="middle" fill="#a5b4fc" font-size="11">RM3100 (선택)</text>
+        <text x="85" y="64" text-anchor="middle" fill="#ddd6fe" font-size="10">50~100 Hz · CAN/I2C</text>
+      </g>
+
+      <!-- Rangefinder — 노랑 (RC 빨강과 명확히 구분) -->
+      <g transform="translate(40, 400)">
+        <rect x="0" y="0" width="170" height="80" rx="12" fill="#422006" stroke="#eab308" stroke-width="2"/>
+        <text x="85" y="26" text-anchor="middle" fill="#fde047" font-size="13" font-weight="700">Rangefinder</text>
+        <text x="85" y="46" text-anchor="middle" fill="#fef08a" font-size="11">거리 측정 · Lightware 등</text>
+        <text x="85" y="64" text-anchor="middle" fill="#fef08a" font-size="11">SF45 / TF-Luna 등</text>
+        <text x="85" y="78" text-anchor="middle" fill="#fef9c3" font-size="10">10~50 Hz · Serial/CAN</text>
+      </g>
+
+      <!-- ADS-B — 하늘색 -->
+      <g transform="translate(40, 510)">
+        <rect x="0" y="0" width="170" height="70" rx="12" fill="#0c4a6e" stroke="#0ea5e9" stroke-width="2"/>
+        <text x="85" y="28" text-anchor="middle" fill="#7dd3fc" font-size="13" font-weight="700">ADS-B In</text>
+        <text x="85" y="48" text-anchor="middle" fill="#bae6fd" font-size="11">주변 항공기 수신</text>
+        <text x="85" y="64" text-anchor="middle" fill="#e0f2fe" font-size="10">Serial 5 · 약 1 Hz</text>
+      </g>
+
+      <!-- RIGHT: Power (주황) & Actuators (분홍) -->
+      <g transform="translate(890, 60)">
+        <rect x="0" y="0" width="170" height="80" rx="12" fill="#431407" stroke="#f97316" stroke-width="2"/>
+        <text x="85" y="26" text-anchor="middle" fill="#fdba74" font-size="13" font-weight="700">Power Module</text>
+        <text x="85" y="46" text-anchor="middle" fill="#fed7aa" font-size="11">전원·전류 측정</text>
+        <text x="85" y="64" text-anchor="middle" fill="#ffedd5" font-size="10">Mauch / Holybro 등</text>
+      </g>
+
+      <g transform="translate(890, 160)">
+        <rect x="0" y="0" width="170" height="60" rx="12" fill="#431407" stroke="#f97316" stroke-width="2"/>
+        <text x="85" y="26" text-anchor="middle" fill="#fdba74" font-size="13" font-weight="700">LiPo / Li-Ion</text>
+        <text x="85" y="48" text-anchor="middle" fill="#fed7aa" font-size="11">배터리 4S~12S</text>
+      </g>
+
+      <g transform="translate(890, 250)">
+        <rect x="0" y="0" width="170" height="90" rx="12" fill="#500724" stroke="#ec4899" stroke-width="2"/>
+        <text x="85" y="26" text-anchor="middle" fill="#f9a8d4" font-size="13" font-weight="700">ESC (4~8ch)</text>
+        <text x="85" y="46" text-anchor="middle" fill="#fbcfe8" font-size="11">모터 속도 제어기</text>
+        <text x="85" y="64" text-anchor="middle" fill="#fbcfe8" font-size="11">PWM / DShot / CAN</text>
+        <text x="85" y="80" text-anchor="middle" fill="#fce7f3" font-size="10">400 Hz+ 갱신</text>
+      </g>
+
+      <g transform="translate(890, 360)">
+        <rect x="0" y="0" width="170" height="70" rx="12" fill="#500724" stroke="#ec4899" stroke-width="2"/>
+        <text x="85" y="28" text-anchor="middle" fill="#f9a8d4" font-size="13" font-weight="700">Motors</text>
+        <text x="85" y="48" text-anchor="middle" fill="#fbcfe8" font-size="11">BLDC 브러시리스 모터</text>
+        <text x="85" y="64" text-anchor="middle" fill="#fce7f3" font-size="10">T-Motor 등</text>
+      </g>
+
+      <g transform="translate(890, 450)">
+        <rect x="0" y="0" width="170" height="70" rx="12" fill="#500724" stroke="#ec4899" stroke-width="2"/>
+        <text x="85" y="28" text-anchor="middle" fill="#f9a8d4" font-size="13" font-weight="700">Servos (선택)</text>
+        <text x="85" y="48" text-anchor="middle" fill="#fbcfe8" font-size="11">조향·짐벌 등 서보</text>
+        <text x="85" y="64" text-anchor="middle" fill="#fce7f3" font-size="10">PWM · 50~333 Hz</text>
+      </g>
+
+      <!-- TOP: RC 빨강 / Telemetry 청록 / GCS 인디고 — 서로 다른 색 -->
+      <g transform="translate(280, 40)">
+        <rect x="0" y="0" width="150" height="70" rx="12" fill="#450a0a" stroke="#ef4444" stroke-width="2"/>
+        <text x="75" y="26" text-anchor="middle" fill="#fca5a5" font-size="13" font-weight="700">RC Receiver</text>
+        <text x="75" y="46" text-anchor="middle" fill="#fecaca" font-size="11">조종기 수신기</text>
+        <text x="75" y="62" text-anchor="middle" fill="#fee2e2" font-size="10">SBUS/CRSF · RCIN</text>
+      </g>
+
+      <g transform="translate(460, 40)">
+        <rect x="0" y="0" width="160" height="70" rx="12" fill="#134e4a" stroke="#14b8a6" stroke-width="2"/>
+        <text x="80" y="26" text-anchor="middle" fill="#5eead4" font-size="13" font-weight="700">Telemetry</text>
+        <text x="80" y="46" text-anchor="middle" fill="#99f6e4" font-size="11">지상↔기체 데이터</text>
+        <text x="80" y="62" text-anchor="middle" fill="#ccfbf1" font-size="10">TELEM1/2 · 라디오</text>
+      </g>
+
+      <g transform="translate(650, 40)">
+        <rect x="0" y="0" width="160" height="70" rx="12" fill="#1e1b4b" stroke="#6366f1" stroke-width="2"/>
+        <text x="80" y="26" text-anchor="middle" fill="#a5b4fc" font-size="13" font-weight="700">HereLink / GCS</text>
+        <text x="80" y="46" text-anchor="middle" fill="#c7d2fe" font-size="11">조종+영상+텔레메트리</text>
+        <text x="80" y="62" text-anchor="middle" fill="#e0e7ff" font-size="10">통합 링크 / 지상국</text>
+      </g>
+
+      <!-- BOTTOM -->
+      <g transform="translate(280, 600)">
+        <rect x="0" y="0" width="200" height="80" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+        <text x="100" y="28" text-anchor="middle" fill="#94a3b8" font-size="13" font-weight="700">Companion Computer</text>
+        <text x="100" y="48" text-anchor="middle" fill="#cbd5e1" font-size="11">보조 PC (AI·비전 등)</text>
+        <text x="100" y="66" text-anchor="middle" fill="#94a3b8" font-size="10">MAVLink · Ethernet/UART</text>
+      </g>
+
+      <g transform="translate(520, 600)">
+        <rect x="0" y="0" width="180" height="80" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+        <text x="90" y="28" text-anchor="middle" fill="#94a3b8" font-size="13" font-weight="700">Safety / Buzzer</text>
+        <text x="90" y="48" text-anchor="middle" fill="#cbd5e1" font-size="11">안전 스위치 + LED</text>
+        <text x="90" y="66" text-anchor="middle" fill="#94a3b8" font-size="10">상태 알림 버저</text>
+      </g>
+
+      <!-- CONNECTION LINES (프로토콜 구분: 점선=DroneCAN, 실선=Serial 계열 등) -->
+      <path d="M210 105 H380 V320 H430" fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-dasharray="6 3"/>
+      <path d="M210 225 H360 V370" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="6 3"/>
+      <path d="M210 335 H360" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="6 3"/>
+      <path d="M210 440 H350 V410 H430" fill="none" stroke="#eab308" stroke-width="2" stroke-dasharray="4 3"/>
+      <path d="M210 545 H340 V430" fill="none" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="M355 110 V190 H430 V290" fill="none" stroke="#ef4444" stroke-width="2"/>
+      <path d="M540 110 V210 H550 V290" fill="none" stroke="#14b8a6" stroke-width="2"/>
+      <path d="M730 110 V230 H670 V290" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="6 3"/>
+      <path d="M890 100 H780 V310 H670" fill="none" stroke="#f97316" stroke-width="2.5"/>
+      <path d="M890 190 H800 V330" fill="none" stroke="#f97316" stroke-width="2"/>
+      <path d="M890 295 H750 V390 H670" fill="none" stroke="#ec4899" stroke-width="2.5"/>
+      <path d="M890 395 H760 V410" fill="none" stroke="#ec4899" stroke-width="2"/>
+      <path d="M890 485 H740 V430" fill="none" stroke="#ec4899" stroke-width="1.5"/>
+      <path d="M380 600 V500 H430" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <path d="M610 600 V520 H550" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+      <text x="300" y="255" fill="#a78bfa" font-size="11" font-weight="600">DroneCAN Bus</text>
+      <text x="300" y="270" fill="#a78bfa" font-size="10">(CAN1 / CAN2)</text>
+      <text x="720" y="350" fill="#f9a8d4" font-size="11" font-weight="600">MAIN OUT</text>
+      <text x="720" y="365" fill="#f9a8d4" font-size="10">PWM / DShot</text>
+      <text x="720" y="255" fill="#fdba74" font-size="11" font-weight="600">POWER1/2</text>
+    </svg>
+  </div>
+  <p class="color-note">
+    이전에는 Rangefinder와 RC Receiver가 둘 다 “Serial(시안)”로 묶여 같은 색이었습니다.
+    통신 방식이 비슷해도 <strong>역할이 다르므로</strong> 지금은 Rangefinder=노랑, RC Receiver=빨강으로 분리했습니다.
+  </p>
+
+  <h2 class="section-title">역할별 요약</h2>
+  <div class="info-grid">
+    <div class="info-card">
+      <h3><span class="badge badge-internal">Internal</span> Cube Orange+ 센서</h3>
+      <ul>
+        <li><strong>삼중 IMU</strong> (가속도+자이로) — 내부 SPI, 고속 샘플 1~8 kHz</li>
+        <li><strong>기압계 2개</strong> (Barometer) — 고도 추정</li>
+        <li><strong>자기계</strong> (Magnetometer) — 방위(나침반) 보조</li>
+        <li>온도 제어 + 진동 격리 (일부 IMU)</li>
+        <li><strong>Failsafe Co-processor</strong> — 메인 CPU 이상 시 안전 보조</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3><span class="badge badge-can">DroneCAN</span> 권장 센서</h3>
+      <ul>
+        <li><strong>Here4</strong> — 정밀 위성 위치(RTK GNSS) + IMU + Mag</li>
+        <li><strong>Optical Flow</strong> — 지면 패턴으로 수평 이동 추정</li>
+        <li>외부 <strong>RM3100</strong> 나침반 (전자 노이즈 회피용)</li>
+        <li>일부 Lidar / 대기속도(Airspeed) 센서</li>
+        <li>한 버스에 여러 장치 · 배선 단순</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3><span class="badge badge-rc">RC</span> · <span class="badge badge-range">거리</span> · 통신</h3>
+      <ul>
+        <li><strong>RC Receiver</strong> — 조종기 스틱 입력을 FC로 (RCIN)</li>
+        <li><strong>Rangefinder</strong> — 지면/장애물까지 거리 (고도 보조·착륙)</li>
+        <li><strong>Telemetry</strong> — 지상과 상태·명령 교환 (TELEM)</li>
+        <li><strong>ADS-B In</strong> — 주변 항공기 위치 수신 (충돌 인지)</li>
+        <li><strong>HereLink / GCS</strong> — 조종·영상·데이터 통합 지상 장비</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3><span class="badge badge-pwm">Actuator</span> · <span class="badge badge-power">Power</span></h3>
+      <ul>
+        <li><strong>MAIN OUT</strong> — ESC로 모터 추력 명령 (PWM/DShot)</li>
+        <li><strong>ESC</strong> — 배터리 고전류를 모터에 맞게 제어</li>
+        <li><strong>Servos</strong> — 고정익 조종면, 짐벌 등 (선택)</li>
+        <li><strong>Power Module</strong> — 전압·전류 측정 후 FC에 전달</li>
+        <li><strong>Companion</strong> — 비전/AI용 보조 컴퓨터 (MAVLink)</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 class="section-title">용어 사전 (처음 나오는 말부터)</h2>
+  <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;">
+    구성도와 카드에 나온 말을 초보자 기준으로 짧게 풀어 씁니다. 이미 아는 항목은 건너뛰셔도 됩니다.
+  </p>
+
+  <div class="glossary">
+    <div class="term-group">1. 전체 시스템</div>
+    <dl class="term">
+      <dt>ArduPilot <span class="en">아두파일럿</span></dt>
+      <dd>드론·자동차·보트 등 무인 플랫폼용 오픈소스 자동 조종 소프트웨어입니다. 이 문서의 “뇌” 소프트웨어 이름입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>HW 구성도 <span class="en">Hardware</span></dt>
+      <dd>Hardware(하드웨어)의 약자입니다. 소프트웨어가 아니라 실제 보드·센서·배선·모터 같은 물리 부품 연결 관계를 그린 그림입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Flight Controller (FC) <span class="en">비행 제어기</span></dt>
+      <dd>센서 데이터를 읽고, 자세·위치를 계산하고, 모터에 명령을 보내는 중앙 보드입니다. 여기선 <strong>Cube Orange+</strong>가 FC입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Cube Orange+</dt>
+      <dd>CubePilot의 고급 비행 제어기 모델입니다. 고성능 MCU와 여러 개의 여분(redundant) 센서를 넣어 상용·연구용에 자주 쓰입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>STM32H757 · 400 MHz</dt>
+      <dd>STMicroelectronics의 32비트 마이크로컨트롤러(작은 컴퓨터 칩) 이름입니다. 약 400 MHz로 동작하며, ArduPilot이 돌아가는 “CPU” 역할을 합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Sensor Sampling <span class="en">센서 샘플링</span></dt>
+      <dd>센서가 측정값을 얼마나 자주 읽는지(초당 횟수)를 말합니다. 단위는 보통 <strong>Hz</strong>(1초에 N번) 또는 <strong>kHz</strong>(1초에 N×1000번)입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Hz / kHz</dt>
+      <dd>주파수 단위. 50 Hz = 1초에 50번 갱신. 1 kHz = 1초에 1000번. IMU는 수천 Hz, GPS는 보통 5~20 Hz처럼 센서마다 다릅니다.</dd>
+    </dl>
+
+    <div class="term-group">2. Cube 내부 센서</div>
+    <dl class="term">
+      <dt>IMU <span class="en">Inertial Measurement Unit · 관성 측정 장치</span></dt>
+      <dd>가속도계(Accel)와 자이로스코프(Gyro)를 묶어 부르는 말입니다. “지금 얼마나 기울고, 얼마나 회전·가속하는지”를 측정합니다. 자세 제어의 핵심입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Triple Redundant IMU <span class="en">삼중 여분 IMU</span></dt>
+      <dd>IMU를 3세트 넣어, 하나가 고장·이상해도 나머지로 비행을 이어가려는 설계입니다. Redundant = 여분·이중화.</dd>
+    </dl>
+    <dl class="term">
+      <dt>ICM42688 / ICM20948</dt>
+      <dd>실제 IMU 칩 모델명(제조사 부품 번호)입니다. 구성도에 “어떤 센서가 들어 있는지”를 구체화한 표기입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Accel / Gyro <span class="en">가속도계 / 자이로</span></dt>
+      <dd>Accel은 직선 가속·중력 방향, Gyro는 각속도(회전 속도)를 측정합니다. 둘을 합쳐 기체의 자세를 추정합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Baro / Barometer <span class="en">기압계</span></dt>
+      <dd>대기 압력으로 대략적인 고도를 추정합니다. GPS 고도보다 짧은 구간 반응에 자주 쓰이며, Cube에는 보통 2개가 있습니다(MS5611 등).</dd>
+    </dl>
+    <dl class="term">
+      <dt>Mag / Magnetometer <span class="en">자기계 · 나침반</span></dt>
+      <dd>지구 자기장을 읽어 방위(어느 쪽이 북쪽인지)를 돕습니다. 모터·전원 배선 근처 전자 노이즈에 약해, 외장 Mag를 쓰기도 합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Temp Control <span class="en">온도 제어</span></dt>
+      <dd>IMU 온도를 일정 범위로 유지해 온도 변화에 따른 센서 오차를 줄이는 기능입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>SPI <span class="en">Serial Peripheral Interface</span></dt>
+      <dd>보드 안에서 칩끼리 고속으로 데이터를 주고받는 연결 방식입니다. Cube 내부 IMU는 SPI로 매우 빠르게 샘플링합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Failsafe Co-processor (F103)</dt>
+      <dd>메인 프로세서와 별도인 작은 보조 CPU입니다. 메인 쪽이 멈추거나 이상할 때 모터 안전 차단 등 failsafe(비상 안전) 동작을 돕습니다. F103은 그 칩 계열 이름입니다.</dd>
+    </dl>
+
+    <div class="term-group">3. 항법·시야 센서 (주로 DroneCAN)</div>
+    <dl class="term">
+      <dt>DroneCAN</dt>
+      <dd>드론용 CAN 버스 프로토콜입니다. 전원·데이터 선을 공유하는 버스에 GPS, 나침반, 광학 플로우 등을 여러 개 달 수 있어 배선이 단순해집니다. 구성도에서 보라색 점선 쪽입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>CAN / CAN1 / CAN2</dt>
+      <dd>Controller Area Network. 자동차·산업에서 쓰는 견고한 통신 버스입니다. Cube에는 CAN 포트가 여러 개 있어 장치를 나눌 수 있습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>GNSS / GPS <span class="en">위성 항법</span></dt>
+      <dd>인공위성 신호로 위치·속도를 구하는 시스템입니다. GPS는 미국 시스템 이름이고, GNSS는 GPS·Galileo·BeiDou 등을 아우르는 더 넓은 말입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Here4</dt>
+      <dd>CubePilot 계열의 고급 GNSS 모듈 제품명입니다. 멀티밴드 RTK, 자체 IMU, 고정밀 나침반(RM3100) 등을 묶어 DroneCAN으로 연결하는 구성이 흔합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Multiband <span class="en">멀티밴드</span></dt>
+      <dd>위성 신호의 여러 주파수 대역을 동시에 받는다는 뜻입니다. 단일 대역보다 오차·간섭에 강한 편입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>RTK <span class="en">Real-Time Kinematic</span></dt>
+      <dd>지상 기준국(또는 네트워크) 보정을 더해 GNSS 위치를 센티미터 급으로 정밀하게 만드는 기술입니다. 측량·정밀 착륙·연구용에 많이 씁니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>F9P</dt>
+      <dd>u-blox의 고정밀 GNSS 수신 칩/모듈 시리즈 이름입니다. RTK를 지원하는 제품에 자주 들어갑니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>RM3100</dt>
+      <dd>고정밀 자기계(나침반) 센서 모델입니다. 드론 동체 자기 간섭을 피하려고 GPS 모듈이나 외장 막대에 달아 쓰는 경우가 많습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Optical Flow <span class="en">광학 플로우</span></dt>
+      <dd>아래를 보는 카메라로 지면 무늬의 움직임을 읽어, GPS 없이도 수평 이동을 추정합니다. 실내·저고도 호버에 유리합니다. HereFlow, ARK Flow 등이 제품 예입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>TOF <span class="en">Time of Flight</span></dt>
+      <dd>빛(또는 신호)이 갔다 오는 시간으로 거리를 재는 방식입니다. 짧은 거리 고도·근접 감지에 쓰입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Lidar <span class="en">라이더</span></dt>
+      <dd>레이저로 거리를 재는 센서입니다. 고도, 장애물, 지형 추적 등에 사용합니다. (레이더와 이름만 비슷하고 원리는 다릅니다.)</dd>
+    </dl>
+    <dl class="term">
+      <dt>I2C</dt>
+      <dd>보드/센서 간 저속 직렬 통신 방식 중 하나입니다. 일부 나침반·소형 센서가 I2C로 연결됩니다. DroneCAN보다 거리·다중 장치에 약합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Airspeed 센서 <span class="en">대기속도</span></dt>
+      <dd>공기가 부딪히는 압력으로 “공기에 대한 속도”를 재는 센서입니다. 고정익(비행기형)에서 실속 방지·항법 정확도에 중요합니다. 멀티콥터에는 없는 경우가 많습니다.</dd>
+    </dl>
+
+    <div class="term-group">4. 거리·교통·조종 입력 (색이 서로 다름)</div>
+    <dl class="term">
+      <dt>Rangefinder <span class="en">거리 센서 · 구성도 노랑</span></dt>
+      <dd>기체에서 지면 또는 물체까지 거리를 잽니다. 정밀 고도 유지, 착륙, 장애물 회피에 씁니다. Lightware, Benewake(TF-Luna 등), SF45 같은 제품이 예입니다. Serial 또는 CAN으로 연결됩니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>RC Receiver <span class="en">RC 수신기 · 구성도 빨강</span></dt>
+      <dd>RC = Radio Control. 조종기(송신기) 전파를 받아 스로틀·롤·피치·요 등 채널 값을 FC에 넘깁니다. Rangefinder와 역할이 전혀 다릅니다(거리는 센서, RC는 조종 입력).</dd>
+    </dl>
+    <dl class="term">
+      <dt>RCIN</dt>
+      <dd>비행 제어기의 “RC 입력” 포트 이름입니다. 수신기 신호를 꽂는 자리로 이해하면 됩니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>SBUS / CRSF / DSM</dt>
+      <dd>수신기와 FC 사이 디지털 신호 규격 이름입니다. SBUS(Futaba 계열 등), CRSF(ExpressLRS/TBS 등), DSM(Spektrum 등)처럼 브랜드·프로토콜이 다릅니다. 수신기·송신기 짝이 맞아야 합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>ADS-B In</dt>
+      <dd>Automatic Dependent Surveillance–Broadcast. 주변 유인/무인 항공기가 방송하는 위치 신호를 수신해 “근처에 누가 있는지”를 알 수 있게 합니다. In = 수신 전용. uAvionix 등이 대표 제품군입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Serial / UART</dt>
+      <dd>선 몇 개로 한 장치와 1:1에 가깝게 글자(바이트)를 주고받는 기본 직렬 통신입니다. 텔레메트리, 일부 GPS, 거리 센서, 보조 컴퓨터 연결에 흔합니다. “Serial 5”는 보드의 5번 시리얼 포트를 가리킵니다.</dd>
+    </dl>
+
+    <div class="term-group">5. 지상 통신·지상국</div>
+    <dl class="term">
+      <dt>Telemetry <span class="en">텔레메트리 · 구성도 청록</span></dt>
+      <dd>기체 상태(자세, GPS, 배터리, 모드 등)를 지상으로 보내고, 지상에서 명령·미션을 올리는 양방향 데이터 링크입니다. 영상(비디오)과는 별개인 경우가 많습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>TELEM1 / TELEM2</dt>
+      <dd>Cube 캐리어보드에 있는 텔레메트리용 시리얼 포트 이름입니다. 보통 TELEM1에 장거리 라디오를 연결합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>RFD900x / SiK / LTE</dt>
+      <dd>텔레메트리 라디오 예시입니다. RFD900x는 장거리 전용 모듈, SiK는 오픈 텔레메트리 펌웨어 계열 라디오, LTE는 휴대폰 망을 쓰는 링크입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>GCS <span class="en">Ground Control Station · 지상 통제국</span></dt>
+      <dd>노트북·태블릿에서 지도를 보고 미션을 짜고, 비행 상태를 감시하는 소프트웨어/장비입니다. Mission Planner, QGroundControl 등이 대표적입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>HereLink</dt>
+      <dd>조종 스틱 + 화면 + 영상/데이터 링크를 한 세트로 묶은 통합 컨트롤러 제품군입니다. 전통적인 “조종기 + 별도 텔레메트리 + 별도 영상”을 합친 형태에 가깝습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>MAVLink</dt>
+      <dd>ArduPilot·PX4 생태계에서 쓰는 메시지 프로토콜입니다. FC ↔ GCS, FC ↔ Companion Computer 사이에 “지금 자세는…”, “이 웨이포인트로…” 같은 명령을 표준 형식으로 주고받습니다.</dd>
+    </dl>
+
+    <div class="term-group">6. 전원·구동계</div>
+    <dl class="term">
+      <dt>Power Module <span class="en">전원 모듈</span></dt>
+      <dd>배터리에서 오는 고전압·고전류를 측정하고, FC가 쓸 수 있는 전원도 나눠 주는 모듈입니다. 전압(V)과 전류(A) 피드백으로 남은 용량·과전류를 감시합니다. Mauch, Holybro 등이 유명합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>POWER1 / POWER2</dt>
+      <dd>Cube에 전원 모듈을 꽂는 커넥터 이름입니다. 이중 전원 입력으로  redundancy를 주는 구성도 있습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>LiPo / Li-Ion <span class="en">리튬 폴리머 / 리튬 이온</span></dt>
+      <dd>드론에 쓰는 충전 배터리 종류입니다. LiPo는 고출력에 강하고, 일부 장시간은 Li-Ion을 씁니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>4S ~ 12S</dt>
+      <dd>S = Series(직렬 셀 개수). 4S는 셀 4개 직렬(공칭 약 14.8 V), 12S는 더 높은 전압입니다. 모터·ESC 정격과 반드시 맞춰야 합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>ESC <span class="en">Electronic Speed Controller · 전자 속도 제어기</span></dt>
+      <dd>FC의 “이만큼 돌려” 명령을 받아, 배터리 전력으로 브러시리스 모터 속도를 실제로 조절하는 장치입니다. 채널 수(4~8ch)는 모터 개수에 맞춥니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>PWM <span class="en">Pulse Width Modulation</span></dt>
+      <dd>펄스 폭으로 값을 전달하는 고전적인 제어 신호입니다. ESC·서보에 널리 쓰이며, MAIN OUT 핀으로 나갑니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>DShot</dt>
+      <dd>ESC용 디지털 프로토콜입니다. 아날로그 PWM보다 노이즈에 강하고, 양방향 텔레메트리(RPM 등)를 지원하는 변형도 있습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>MAIN OUT / AUX OUT</dt>
+      <dd>FC 캐리어보드의 출력 핀 그룹입니다. MAIN은 주로 모터(ESC), AUX는 서보·짐벌·추가 장치용으로 쓰는 구성이 흔합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Motors · BLDC</dt>
+      <dd>BLDC = Brushless DC, 브러시 없는 직류 모터입니다. 드론 프로펠러를 돌리는 주 추력원입니다. T-Motor U/MN 등은 제품 시리즈 예입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>FOC <span class="en">Field Oriented Control</span></dt>
+      <dd>모터를 더 효율·정숙하게 제어하는 고급 ESC 제어 방식입니다. “FOC ESC”라고 적힌 제품이 이에 해당합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Servos <span class="en">서보</span></dt>
+      <dd>각도 위치를 제어하는 작은 액추에이터입니다. 고정익 조종면, 카메라 짐벌, 투하 장치 등에 쓰이며 멀티콥터 기본 구성에는 없을 수 있습니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Actuator <span class="en">액추에이터</span></dt>
+      <dd>전기 신호를 “움직임”으로 바꾸는 장치 전반(모터, 서보 등)을 가리키는 말입니다.</dd>
+    </dl>
+
+    <div class="term-group">7. 보조 컴퓨터·안전</div>
+    <dl class="term">
+      <dt>Companion Computer <span class="en">컴패니언 컴퓨터</span></dt>
+      <dd>FC 옆에 다는 소형 컴퓨터입니다. 카메라 AI, 경로 계획, ROS 등 무거운 계산을 맡고, 결과는 MAVLink로 FC에 전달합니다. Jetson, Raspberry Pi 5, Orin 등이 예입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Jetson / RPi 5 / Orin</dt>
+      <dd>NVIDIA Jetson(Orin 포함)은 GPU 가속 AI에 강하고, Raspberry Pi 5는 범용 저전력 보드입니다. “어떤 보조 PC를 쓰는지” 예시 표기입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Ethernet / UART</dt>
+      <dd>Companion과 FC를 잇는 물리 연결 예입니다. UART는 시리얼, Ethernet은 랜 케이블·네트워크로 더 높은 대역폭 통신에 씁니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Safety Switch <span class="en">안전 스위치</span></dt>
+      <dd>모터가 돌 수 있는 상태(아밍)로 들어가기 전에 누르는 물리적 안전 장치입니다. 오작동으로 프로펠러가 갑자기 도는 것을 줄입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Buzzer / LED</dt>
+      <dd>버저는 비프음으로 모드·오류·GPS 상태 등을 알리고, LED는 색·점멸로 상태를 표시합니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Arming / Failsafe <span class="en">아밍 / 페일세이프</span></dt>
+      <dd>Arming은 “모터 출력을 허용”하는 단계입니다. Failsafe는 통신 두절·저전압 등 이상 시 RTL(귀환), 착륙, 모터 차단 같은 미리 정한 안전 동작입니다.</dd>
+    </dl>
+
+    <div class="term-group">8. 파라미터·기타</div>
+    <dl class="term">
+      <dt>INS_FAST_SAMPLE / GPS_RATE 등</dt>
+      <dd>ArduPilot 설정 파라미터 이름 예입니다. INS_FAST_SAMPLE은 IMU 고속 샘플링, GPS_RATE는 GNSS 갱신 주기 관련 설정입니다. 실제 샘플링은 파라미터 + 센서 능력에 따라 달라집니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Carrier Board <span class="en">캐리어 보드</span></dt>
+      <dd>Cube “뇌” 모듈을 꽂는 하단 보드로, 여기에 TELEM, RCIN, POWER, MAIN OUT 같은 커넥터가 모여 있습니다. 문서의 포트 이름은 대개 캐리어 기준입니다.</dd>
+    </dl>
+    <dl class="term">
+      <dt>Redundant / 이중화</dt>
+      <dd>같은 역할을 하는 부품을 둘 이상 두어, 하나가 실패해도 시스템이 버틸 여지를 두는 설계입니다. 삼중 IMU, 이중 전원 등이 해당합니다.</dd>
+    </dl>
+  </div>
+
+  <div class="footer">
+    ArduPilot + CubePilot 생태계 · 2025–2026 일반적인 상용/연구용 구성 기준<br>
+    센서 샘플링 레이트는 파라미터(INS_FAST_SAMPLE, GPS_RATE 등)와 센서 자체 설정에 따라 달라질 수 있습니다.<br>
+    구성도 색은 <strong>기능 역할</strong> 구분용이며, 연결 방식(DroneCAN / Serial / PWM 등)은 선 스타일과 박스 안 라벨을 함께 보세요.
+  </div>
+</body>
+</html>
